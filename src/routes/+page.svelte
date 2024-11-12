@@ -32,7 +32,7 @@
 
 	function math_eval({ math }: { math: string }) {
 		try {
-			return "the result is: " + eval(math);
+			return "the result of " + math + " is: " + eval(math);
 		} catch (e) {
 			return "Invalid math expression";
 		}
@@ -52,13 +52,13 @@
 					type: "function",
 					function: {
 						name: "math_eval",
-						description: "evaluates a simple math expression",
+						description: "evaluates a simple math expression in javascript math syntax",
 						parameters: {
 							type: "object",
 							properties: {
 								math: {
 									type: "string",
-									description: "the math expression to evaluate",
+									description: "the math expression to evaluate, must be a valid javascript math expression",
 								},
 							},
 							required: ["math"],
@@ -69,7 +69,8 @@
 					type: "function",
 					function: {
 						name: "skip",
-						description: "skips the tool-call because no tool is applicable",
+						description:
+							"skips the tool-call because no tool is applicable. allways use this tool is no tool is needed to fulfill the user request, if this tool is used a different ai will be used to fulfill the user request without tools",
 						parameters: {
 							type: "object",
 							properties: {},
@@ -161,7 +162,9 @@
 </div>
 
 {#if messages.length > 0}
-	<div class="p-2 bg-background backdrop-blur-sm rounded-lg mt-4 flex flex-col gap-4 shadow-lg" in:blur>
+	<div
+		class="p-2 bg-background backdrop-blur-sm rounded-lg mt-4 flex flex-col gap-4 shadow-lg overflow-y-scroll max-h-[calc(100vh-4.8rem)]"
+		in:blur>
 		{#each messages as message}
 			{#if message.role !== "user"}
 				<ChatSection {message} />
