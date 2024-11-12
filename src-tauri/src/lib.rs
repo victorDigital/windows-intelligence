@@ -4,16 +4,20 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
-use std::thread::sleep;
-use std::time::Duration;
+#[tauri::command]
+async fn hide_window(webview_window: tauri::WebviewWindow) {
+    println!("WebviewWindow: {}", webview_window.label());
+    webview_window.hide().unwrap();
+}
+
 use tauri::Manager;
 use tauri::PhysicalPosition;
-use tauri::Theme;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 use tauri_plugin_positioner::{Position, WindowExt};
 pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![hide_window])
         .setup(|app| {
             #[cfg(desktop)]
             let win = app.get_webview_window("main").unwrap();
@@ -30,11 +34,40 @@ pub fn run() {
             };
             let _ = win.set_position(tauri::Position::Physical(offset_position));
 
-            tauri::async_runtime::spawn(async move {
-                // adapt sleeping time to be long enough
-                sleep(Duration::from_millis(10));
-                win.show().unwrap();
-            });
+            let _ = win.show().unwrap();
+
+            {
+                use tauri_plugin_global_shortcut::{
+                    Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
+                };
+
+                let ctrl_shift_c_shortcut =
+                    Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyC);
+                app.handle().plugin(
+                    tauri_plugin_global_shortcut::Builder::new()
+                        .with_handler(move |_app, shortcut, event| {
+                            println!("{:?}", shortcut);
+                            if shortcut == &ctrl_shift_c_shortcut {
+                                match event.state() {
+                                    ShortcutState::Pressed => {
+                                        //if the webview is hidden, show it and vice versa
+                                        if win.is_visible().unwrap() {
+                                            win.hide().unwrap();
+                                        } else {
+                                            win.show().unwrap();
+                                        }
+                                    }
+                                    ShortcutState::Released => {
+                                        // nothing to do
+                                    }
+                                }
+                            }
+                        })
+                        .build(),
+                )?;
+
+                app.global_shortcut().register(ctrl_shift_c_shortcut)?;
+            }
 
             Ok(())
         })
